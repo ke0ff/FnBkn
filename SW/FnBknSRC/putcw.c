@@ -16,6 +16,11 @@
  *					to produce an appropriate output (cw_key) with Morse timings (cw_delay)
  *
  *  Project scope declarations revision history:
+ *    03-25-24 jmh:  Rev 1.0
+ *					 Tested/scrubbed Morse table.  Corrected "!" code.  Non-code characters = "E" or "T", added "[", "\", "]", "^", and "_"
+ *						All "bracket" chars are now "(" or ")".
+ *					 "a" & "b" time delay commands now use 2-digit params and run at 0.5sec with 49.5sec max range.
+ *					 Added build-switch (KEYINVERT) to set key polarity to active low or high.
  *    03-24-24 jmh:  Rev 0.0:
  *                   Copied from UX89-MR project for F'n Beacon project
  *					 Modified putcw() with process hooks for beacon control characters (which are non-CW characters, e.g., lower case ASCII)
@@ -31,6 +36,7 @@
  *
  *******************************************************************/
 
+//#define KEYINVERT		// uncomment to invert KEY (makes KEY active high)
 
 /********************************************************************
  *  File scope declarations revision history:
@@ -80,32 +86,31 @@
 //	byte is the first element of the character.  A "1" is a DIT, and a "0" is a DAH.
 char	cw_table[] = 	{
 //    !     "     #     $     %     &     '     (     )     *     +     ,     -     .     /     0
-   0x0e, 0x2d, 0x00, 0x37, 0x00, 0x07, 0x21, 0x12, 0x12, 0x00, 0x15, 0x0c, 0x1e, 0x15, 0x16, 0x00,
+   0x0a, 0x2d, 0x00, 0x37, 0x01, 0x07, 0x21, 0x12, 0x12, 0x01, 0x15, 0x0c, 0x1e, 0x15, 0x16, 0x00,
 //    1     2     3     4     5     6     7     8     9     :     ;     <     =     >     ?     @
-   0x01, 0x03, 0x07, 0x0f, 0x1f, 0x1e, 0x1c, 0x18, 0x10, 0x38, 0x2a, 0x00, 0x0e, 0x00, 0x33, 0x29,
+   0x01, 0x03, 0x07, 0x0f, 0x1f, 0x1e, 0x1c, 0x18, 0x10, 0x38, 0x2a, 0x12, 0x0e, 0x12, 0x33, 0x29,
 //    a     b     c     d     e     f     g     h     i     j     k     l     m     n     o     p
    0x01, 0x0e, 0x0a, 0x06, 0x01, 0x0b, 0x04, 0x0f, 0x03, 0x01, 0x02, 0x0d, 0x00, 0x02, 0x00, 0x09,
-//    q     r     s     t     u     v     w     x     y     z     _   nul
-   0x04, 0x05, 0x07, 0x00, 0x03, 0x07, 0x01, 0x06, 0x02, 0x0c, 0x13, 0x00
+//    q     r     s     t     u     v     w     x     y     z     [     \     ]     ^     _   nul
+   0x04, 0x05, 0x07, 0x00, 0x03, 0x07, 0x01, 0x06, 0x02, 0x0c, 0x12, 0x16, 0x12, 0x01, 0x13, 0x00
 						};
 // Morse character length table.  Indicates length of corresponding character.  A length of "0"
 //	represents an un-supported character.
 char	cwlen_table[] = 	{
 //    !     "     #     $     %     &     '     (     )     *     +     ,     -     .     /     0
-   0x06, 0x06, 0x00, 0x07, 0x00, 0x03, 0x06, 0x05, 0x06, 0x00, 0x05, 0x06, 0x06, 0x06, 0x05, 0x05,
+   0x06, 0x06, 0x01, 0x07, 0x01, 0x03, 0x06, 0x05, 0x06, 0x01, 0x05, 0x06, 0x06, 0x06, 0x05, 0x05,
 //    1     2     3     4     5     6     7     8     9     :     ;     <     =     >     ?     @
-   0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x00, 0x05, 0x00, 0x06, 0x06,
+   0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x05, 0x05, 0x06, 0x06, 0x06,
 //    a     b     c     d     e     f     g     h     i     j     k     l     m     n     o     p
    0x02, 0x04, 0x04, 0x03, 0x01, 0x04, 0x03, 0x04, 0x02, 0x04, 0x03, 0x04, 0x02, 0x02, 0x03, 0x04,
-//    q     r     s     t     u     v     w     x     y     z     _   nul
-   0x04, 0x03, 0x03, 0x01, 0x03, 0x04, 0x03, 0x04, 0x04, 0x04, 0x06, 0x00
+//    q     r     s     t     u     v     w     x     y     z     [     \     ]     ^     _   nul
+   0x04, 0x03, 0x03, 0x01, 0x03, 0x04, 0x03, 0x04, 0x04, 0x04, 0x05, 0x05, 0x06, 0x01, 0x06, 0x00
 						};
 
 char	wpm_reg;					// global WPM register
 
 #define FIRST_CW '!'
-#define USCORE_CW  ('Z'+1)
-#define LAST_CW  ('Z'+2)
+#define LAST_CW  ('_')
 
 //-----------------------------------------------------------------------------
 // Local Prototypes
@@ -149,19 +154,26 @@ int puts_cw(const char* s /* pointer to string to transmit */, char wpm)
 			case 'a':					// no-key-down with 1-16 sec of delay
 				i = *s;
 				if(i) s += 1;			// advance pointer if not the end of string
-				i &= 0x0f;				// mask low nyb -- this is the #seconds to delay
-				cw_delay(i+1, 0);		// delay for i seconds (i = 1-10 for a param of "0" to "9"
+				j = i & 0x0f;			// mask low nyb -- this is the 10's of 0.5 seconds to delay
+				j *= 10;
+				i = *s;
+				if(i) s += 1;			// advance pointer if not the end of string
+				j = j + (i & 0x0f);		// mask low nyb -- this is the 1's of 0.5 seconds to delay
+				if(j>99){				// only allow 99 max
+					j = 99;
+				}
+				cw_delay(j, 0);			// delay for j/2 seconds
 				cw_key(0);				// de-activate key
 				break;
 
 			case 'z':					// set CW speed, with 2-digit, decimal param
 				i = *s;
 				if(i) s += 1;			// advance pointer if not the end of string
-				j = i & 0x0f;			// mask low nyb -- this is the #seconds to delay
+				j = i & 0x0f;			// mask low nyb -- this is the 10's of the WPM
 				j *= 10;
 				i = *s;
 				if(i) s += 1;			// advance pointer if not the end of string				
-				j = j + (i & 0x0f);		// mask low nyb -- this is the #seconds to delay
+				j = j + (i & 0x0f);		// mask low nyb -- this is the 1's of the WPM
 				if((j>(MIN_WPM-1)) && (j<(MAX_WPM+1))){	// only allow 5<=WPM<=31
 					wpm_reg = j;
 					w = j;
@@ -211,16 +223,12 @@ void putchar_cw(char s   /* char to transmit */, char wpm)
 			// delay 3dahs
 			cw_delay(DAH3, wpm);
 		}else{
-			// trap underscore & re-map
-			if(s == '_'){
-				s = USCORE_CW;
-			}
 			// range limit the input character
 			if(s > LAST_CW){
 				s = LAST_CW;
 			}
 			if(s < FIRST_CW){
-				s = LAST_CW;
+				s = LAST_CW+1;
 			}
 			// convert character to CW table index
 			temp = s - FIRST_CW;
@@ -281,13 +289,23 @@ char wpmg(char wpm   /* int wpm */ )
 //-----------------------------------------------------------------------------
 void cw_key(char key   /* transmit on or off */ )
 {
+#ifdef KEYINVERT
 	if(key != ON){
 		TCCR1 = TCCR_OFF;						// set up side-tone gen
 		PORTB = PORTB & ~KEY;					// cwkey = 0;
-	}else{
+		}else{
 		TCCR1 = TCCR_ON;						// set up side-tone gen
 		PORTB = PORTB | KEY;					// cwkey = 1;
 	}
+#else
+	if(key != ON){
+		TCCR1 = TCCR_OFF;						// set up side-tone gen
+		PORTB = PORTB | KEY;					// cwkey = 1;
+	}else{
+		TCCR1 = TCCR_ON;						// set up side-tone gen
+		PORTB = PORTB & ~KEY;					// cwkey = 0;
+	}
+#endif
 	return;
 }
 
@@ -315,9 +333,9 @@ void cw_delay(char element_len, char wpm)
 	volatile char j;
 
 	if(wpm){
-		base = 28387L / (long int)wpm;		// calibrated for att-85
+		base = 28387L / (long int)wpm;		// 1.2sec duration (/wpm) calibrated for att-85
 	}else{
-		base = 23655L;						// 1 sec
+		base = 11898L;						// 0.5 sec
 	}
 	// do a delay * the base value
 	for(j = 0; j < element_len; j++){
