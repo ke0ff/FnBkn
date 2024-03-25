@@ -30,6 +30,10 @@
 	#include <stdbool.h>
 	#include <util/delay.h>
 
+#define TCCR_ON					0x84
+#define TCCR_OFF				0x80
+#define	TONE_FREQ				600L
+#define	TMR_FREQ				(char)(62000L/(long int)TONE_FREQ)
 #define MIN_WPM					(5)
 #define MAX_WPM					(30)
 #define KEY_PORT				PORTB

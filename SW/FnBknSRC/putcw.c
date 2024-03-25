@@ -16,12 +16,14 @@
  *					to produce an appropriate output (cw_key) with Morse timings (cw_delay)
  *
  *  Project scope declarations revision history:
- *    03-24-24 jmh:  Rev 1.1:
+ *    03-24-24 jmh:  Rev 0.0:
  *                   Copied from UX89-MR project for F'n Beacon project
  *					 Modified putcw() with process hooks for beacon control characters (which are non-CW characters, e.g., lower case ASCII)
  *					 Added wpmg() to manage Morse speed changes
+ *					 added side-tone timer-tone for PB4 (freq fixed by a #define in main.h)
  *					 !!!-todo: cw_delay() modified to use a timer resource
- *					 !!!-todo: add side-tone timer-tone for PB4 (800 Hz fixed by a #define)
+ *
+ *    Previous history:
  *    01-01-13 jmh:  Rev 1.0:
  *                   Initial release
  *    12-31-12 jmh:  Rev 1.0:
@@ -280,8 +282,10 @@ char wpmg(char wpm   /* int wpm */ )
 void cw_key(char key   /* transmit on or off */ )
 {
 	if(key != ON){
+		TCCR1 = TCCR_OFF;						// set up side-tone gen
 		PORTB = PORTB & ~KEY;					// cwkey = 0;
 	}else{
+		TCCR1 = TCCR_ON;						// set up side-tone gen
 		PORTB = PORTB | KEY;					// cwkey = 1;
 	}
 	return;

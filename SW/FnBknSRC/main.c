@@ -29,6 +29,11 @@
  *	The above message produces a 20wpm call and grid square message at high-power followed by 1 sec of silence,
  *	then 3 sec of tone at medium power, followed by a word space (4 dit times) ending with 3 sec of tone at low power.
  *
+ * Added sidetone generator using timer1 in normal mode, CTC.  Design notes:
+ *		Timer1 for tone output: see main.h for tone equation
+ *		OCR1A/B/C = compare reg (only seems to work if all three are set to the same compare value
+ *		CTC = 1; COM1B[1:0] = 01; CS[13:10] = 0100 or 0000 for tone off
+ * 
  */ 
 
 // Version 0.0, 03-23-24
@@ -50,7 +55,11 @@
 
 int main(void)
 {
-
+	TCCR1 = TCCR_OFF;							// set up side-tone gen
+	GTCCR = 0x10;
+	OCR1A = TMR_FREQ;							// set side-tone freq
+	OCR1B = TMR_FREQ;
+	OCR1C = TMR_FREQ;
 	PORTB = PORTB & ~KEY;						// Init PORTB & set for output
 	DDRB = DDRB | KEY | PWR1| PWR2| TONE;
 	wpmg(30);									// init speed
