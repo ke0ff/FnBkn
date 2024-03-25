@@ -12,7 +12,7 @@ The message syntax is defined as follows:
 *	"u":	ultra-low power, PWR[1:0] = %11 to turn on two, series attenuators
 *	"l":	<lower-case "L"> low power, PWR[1:0] = %10 to turn on one, series attenuator
 *	"m":	med power, PWR[1:0] = %01 to turn on one, series attenuator
-*	"h":	low power, PWR[1:0] = %00 to turn off all attenuators
+*	"h":	high power, PWR[1:0] = %00 to turn off all attenuators
 
 An example message:
 
