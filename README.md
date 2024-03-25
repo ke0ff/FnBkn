@@ -1,5 +1,6 @@
 # FnBkn
-ATTINY-85 Beacon Controller
+ATTINY-85 Beacon Controller</p>
+Current release: 0.0</p>
 This project implements a simple beacon controller in an 8-pin MCU form-factor.
 HW folder contains schematic and layout artifacts for the project.
 SW Folder contains the Atmel Studio 7 project files
